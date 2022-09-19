@@ -5,3 +5,4 @@ class Config(BaseSettings):
     dsn: RedisDsn
     config_channel: str
     telemetry_channel: str
+    config_apply_channel: str

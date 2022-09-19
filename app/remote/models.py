@@ -1,9 +1,9 @@
-from ctypes import Union
 from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel
 from enum import IntEnum
+from app.wire.config import Config as SerialConfig
 
 
 class Telemetry(BaseModel):
@@ -22,6 +22,12 @@ class Telemetry(BaseModel):
 class PayloadType(IntEnum):
     telemetry = 1
     config = 2
+    config_update = 3
+
+
+class ConfigUpdated(BaseModel):
+    timestamp: datetime
+    config: SerialConfig
 
 
 class Payload(BaseModel):

@@ -1,0 +1,4 @@
+pyserial==3.5
+redis==4.3.4
+python-dotenv==0.21.0
+pydantic==1.10.2
