@@ -35,23 +35,28 @@ class Remote:
         except pydantic.ValidationError:
             return None
 
-    def step(self) -> Optional[List[Payload]]:
+    def step(self) -> List[Payload]:
         self.pubsub.get_message()
-        try:
-            w = self.__wire_payloads.get(block=False)
-            return w  # TODO: add multiple return
-        except queue.Empty:
-            pass
+        return self.get_wire_queue()
 
     def __process_payload(self, payload: Payload):
         if payload is not None:
             self.publish(payload)
 
+    def get_wire_queue(self) -> List[Payload]:
+        res = []
+        while not self.__wire_payloads.empty():
+            try:
+                res.append(self.__wire_payloads.get_nowait())
+            except queue.Empty:
+                break
+        return res
+
     def process_payloads(self, *payloads):
         res = []
         for i in payloads:
             res.append(self.__process_payload(i))
-            return res
+        return res
 
     def publish(self, payload: Payload):
         if payload.type == PayloadType.telemetry:

@@ -17,6 +17,7 @@ class ConnectorApp:
         self.wire_config = WireCfg(port=config.serial_port, baudrate=config.serial_baudrate,
                                    parity=config.serial_parity, bytesize=config.serial_bytesize,
                                    timeout=config.serial_timeout, stopbits=config.serial_stopbits)
+
         self.remote = Remote(self.remote_config)
         self.wire = WireConnection(self.wire_config)
         self.payloads = []
@@ -28,7 +29,7 @@ class ConnectorApp:
             self.process_payloads()
 
     def step(self):
-        self.add_payloads(self.remote.step(), self.wire.step())
+        self.add_payloads(*self.remote.step(), *self.wire.step())
 
     def process_payloads(self):
         wire_payloads = self.get_wire_payloads()
@@ -36,11 +37,10 @@ class ConnectorApp:
         self.payloads.clear()
 
         res = self.wire.process_payloads(*wire_payloads)
-        if res is not None:
-            self.add_payloads(*res)
+        self.add_payloads(*res)
+
         res = self.remote.process_payloads(*remote_payloads)
-        if res is not None:
-            self.add_payloads(*res)
+        self.add_payloads(*res)
 
     def add_payloads(self, *payloads):
         for i in payloads:

@@ -11,3 +11,5 @@ class Config(BaseSettings):
     parity: Optional[str] = serial.PARITY_NONE
     stopbits: Optional[int] = 1
     timeout: Optional[int] = 0
+
+
