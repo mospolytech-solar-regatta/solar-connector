@@ -12,11 +12,17 @@ class PayloadType(IntEnum):
     config = 2
     config_update = 3
     status_update = 4
+    log = 5
 
 
 class ConfigUpdated(BaseModel):
     timestamp: datetime
     config: SerialConfig
+
+
+class LogPayload(BaseModel):
+    timestamp: datetime
+    data: str
 
 
 class UpdateStatus(BaseModel):

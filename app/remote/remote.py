@@ -12,7 +12,8 @@ from app.wire.config import Config as SerialConfig
 
 
 class Remote:
-    allowed_payload_types = [PayloadType.telemetry, PayloadType.config_update, PayloadType.status_update]
+    allowed_payload_types = [PayloadType.telemetry, PayloadType.log, PayloadType.config_update,
+                             PayloadType.status_update]
 
     def __init__(self, config: Config):
         self.redis = redis.Redis().from_url(config.dsn)
@@ -21,6 +22,7 @@ class Remote:
         self.telemetry_channel = config.telemetry_channel
         self.config_apply_channel = config.config_apply_channel
         self.status_update_channel = config.status_update_channel
+        self.log_channel = config.log_channel
         self.__wire_payloads = queue.Queue()
 
     def subscribe(self):
@@ -67,3 +69,6 @@ class Remote:
             self.redis.publish(self.config_apply_channel, payload.data.json())
         if payload.type == PayloadType.status_update:
             self.redis.publish(self.status_update_channel, payload.data.json())
+        if payload.type == PayloadType.log:
+            self.redis.publish(self.log_channel, payload.data.data)
+

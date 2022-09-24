@@ -1,5 +1,6 @@
 import datetime
 import json
+import traceback
 from typing import Optional, List
 
 import pydantic
@@ -7,7 +8,7 @@ import pydantic
 from app.status import AppStatus
 from app.wire.connection import Connection
 from app.remote.models import Telemetry
-from app.payloads import PayloadType, Payload, ConfigUpdated, UpdateStatus
+from app.payloads import PayloadType, Payload, ConfigUpdated, UpdateStatus, LogPayload
 from app.wire.config import Config
 from app.errors import SerialReadError
 
@@ -39,9 +40,14 @@ class WireConnection:
             payload = Payload(data=data, type=PayloadType.telemetry)
             return payload
         except json.JSONDecodeError:
-            return None
+            return self.get_log_payload(traceback.format_exc())
         except pydantic.ValidationError:
-            return None
+            return self.get_log_payload(traceback.format_exc())
+
+    def get_log_payload(self, log: str):
+        log = str(log)
+        log = LogPayload(timestamp=datetime.datetime.now(), data=log)
+        return Payload(type=PayloadType.log, data=log)
 
     def get_new_status_payload(self, new_status: AppStatus):
         status_update = UpdateStatus(timestamp=datetime.datetime.now(), status=new_status)

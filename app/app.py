@@ -20,7 +20,8 @@ class ConnectorApp:
         self.remote_config = RemoteCfg(dsn=config.redis_dsn, config_channel=config.redis_config_channel,
                                        telemetry_channel=config.redis_telemetry_channel,
                                        config_apply_channel=config.redis_config_apply_channel,
-                                       status_update_channel=config.redis_status_update_channel)
+                                       status_update_channel=config.redis_status_update_channel,
+                                       log_channel=config.redis_log_channel)
 
         self.wire_config = WireCfg(port=config.serial_port, baudrate=config.serial_baudrate,
                                    parity=config.serial_parity, bytesize=config.serial_bytesize,

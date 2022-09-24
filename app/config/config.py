@@ -10,6 +10,7 @@ class Config(BaseSettings):
     redis_config_apply_channel: str
     redis_status_update_channel: str
     redis_telemetry_channel: str
+    redis_log_channel: str
     serial_port: str
     serial_baudrate: Optional[int] = 115200
     serial_bytesize: Optional[int] = 8
