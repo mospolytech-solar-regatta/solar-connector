@@ -8,6 +8,7 @@ class Config(BaseSettings):
     redis_dsn: RedisDsn = 'redis://localhost:6379/1'
     redis_config_channel: str
     redis_config_apply_channel: str
+    redis_status_update_channel: str
     redis_telemetry_channel: str
     serial_port: str
     serial_baudrate: Optional[int] = 115200

@@ -18,18 +18,3 @@ class Telemetry(BaseModel):
     position_lat: float
     position_lng: float
 
-
-class PayloadType(IntEnum):
-    telemetry = 1
-    config = 2
-    config_update = 3
-
-
-class ConfigUpdated(BaseModel):
-    timestamp: datetime
-    config: SerialConfig
-
-
-class Payload(BaseModel):
-    type: PayloadType
-    data: Any

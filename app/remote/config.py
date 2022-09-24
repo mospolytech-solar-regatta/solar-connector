@@ -6,3 +6,4 @@ class Config(BaseSettings):
     config_channel: str
     telemetry_channel: str
     config_apply_channel: str
+    status_update_channel: str

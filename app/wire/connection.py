@@ -3,6 +3,7 @@ from typing import Optional
 
 import serial
 from app.wire.config import Config
+from app.errors import SerialReadError
 
 
 class Connection:
@@ -14,19 +15,22 @@ class Connection:
         self.serial = self.create_serial()
         self.__buffer = b""
 
-    def create_serial(self):
+    def create_serial(self, cfg=None):
+        if cfg is None:
+            cfg = self.config
         try:
-            return serial.Serial(self.config.port, self.config.baudrate, timeout=self.config.timeout,
-                                 parity=self.config.parity, rtscts=1, stopbits=self.config.stopbits,
-                                 bytesize=self.config.bytesize)
+            return serial.Serial(cfg.port, cfg.baudrate, timeout=cfg.timeout,
+                                 parity=cfg.parity, rtscts=1, stopbits=cfg.stopbits,
+                                 bytesize=cfg.bytesize)
         except:
             return serial.Serial()
 
     def discovery_config(self):
         cfg = self.get_tmp_config()
         if cfg is not None:
-            ser = self.create_serial()
+            ser = self.create_serial(cfg)
             if ser.is_open:
+                ser.close()
                 return cfg
         portname = self.discover_port()
         if portname is not None:
@@ -72,7 +76,7 @@ class Connection:
         result = None
         self.validate_and_fix_config()
         if not self.check_serial():
-            return
+            raise SerialReadError()
         data: bytes = self.serial.readline()
         if data:
             is_newline = data.find(b'\n')
@@ -90,6 +94,8 @@ class Connection:
     def check_serial(self, ser=None) -> bool:
         if ser is None:
             ser = self.serial
+        # if not ser.is_open:
+        #     ser.open()
         return ser.is_open
 
     def update_config(self, new_cfg: Config):

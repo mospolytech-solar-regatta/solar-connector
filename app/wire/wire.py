@@ -3,9 +3,13 @@ import json
 from typing import Optional, List
 
 import pydantic
+
+from app.status import AppStatus
 from app.wire.connection import Connection
-from app.remote.models import Telemetry, PayloadType, Payload, ConfigUpdated
+from app.remote.models import Telemetry
+from app.payloads import PayloadType, Payload, ConfigUpdated, UpdateStatus
 from app.wire.config import Config
+from app.errors import SerialReadError
 
 
 class WireConnection:
@@ -19,9 +23,13 @@ class WireConnection:
 
     def read(self) -> List[Payload]:
         payloads = []
-        data = self.conn.read()
-        if data:
-            payloads.append(self.get_telemetry_payload(data))
+        try:
+            data = self.conn.read()
+            if data:
+                payloads.append(self.get_telemetry_payload(data))
+        except SerialReadError:
+            payloads.append(self.get_new_status_payload(AppStatus.Failing))
+        payloads.append(self.get_config_update_payload())
         return payloads
 
     def get_telemetry_payload(self, data) -> Optional[Payload]:
@@ -34,6 +42,10 @@ class WireConnection:
             return None
         except pydantic.ValidationError:
             return None
+
+    def get_new_status_payload(self, new_status: AppStatus):
+        status_update = UpdateStatus(timestamp=datetime.datetime.now(), status=new_status)
+        return Payload(type=PayloadType.status_update, data=status_update)
 
     def get_config_update_payload(self) -> Optional[Payload]:
         config_update = ConfigUpdated(timestamp=datetime.datetime.now(), config=self.conn.config)

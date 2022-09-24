@@ -6,12 +6,13 @@ import pydantic
 import redis
 
 from app.remote.config import Config
-from app.remote.models import Telemetry, Payload, PayloadType
+from app.remote.models import Telemetry
+from app.payloads import Payload, PayloadType
 from app.wire.config import Config as SerialConfig
 
 
 class Remote:
-    allowed_payload_types = [PayloadType.telemetry, PayloadType.config_update]
+    allowed_payload_types = [PayloadType.telemetry, PayloadType.config_update, PayloadType.status_update]
 
     def __init__(self, config: Config):
         self.redis = redis.Redis().from_url(config.dsn)
@@ -19,6 +20,7 @@ class Remote:
         self.config_channel = config.config_channel
         self.telemetry_channel = config.telemetry_channel
         self.config_apply_channel = config.config_apply_channel
+        self.status_update_channel = config.status_update_channel
         self.__wire_payloads = queue.Queue()
 
     def subscribe(self):
@@ -63,3 +65,5 @@ class Remote:
             self.redis.publish(self.telemetry_channel, payload.data.json())
         if payload.type == PayloadType.config_update:
             self.redis.publish(self.config_apply_channel, payload.data.json())
+        if payload.type == PayloadType.status_update:
+            self.redis.publish(self.status_update_channel, payload.data.json())
