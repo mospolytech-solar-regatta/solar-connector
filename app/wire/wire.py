@@ -36,7 +36,7 @@ class WireConnection:
     def get_telemetry_payload(self, data) -> Optional[Payload]:
         try:
             data = json.loads(data)
-            data = Telemetry(**data)
+            data = Telemetry.parse_obj(data)
             payload = Payload(data=data, type=PayloadType.telemetry)
             return payload
         except json.JSONDecodeError:

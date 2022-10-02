@@ -1,13 +1,11 @@
 from datetime import datetime
-from typing import Any
+from typing import Optional
 
-from pydantic import BaseModel
-from enum import IntEnum
-from app.wire.config import Config as SerialConfig
+from pydantic import BaseModel, Field
 
 
 class Telemetry(BaseModel):
-    created_at: datetime
+    created_at: datetime = Field(default_factory=datetime.utcnow)
     controller_watts: int
     time_to_go: int
     controller_volts: float
@@ -17,4 +15,3 @@ class Telemetry(BaseModel):
     motor_revols: float
     position_lat: float
     position_lng: float
-

@@ -6,7 +6,6 @@ import pydantic
 import redis
 
 from app.remote.config import Config
-from app.remote.models import Telemetry
 from app.payloads import Payload, PayloadType
 from app.wire.config import Config as SerialConfig
 
