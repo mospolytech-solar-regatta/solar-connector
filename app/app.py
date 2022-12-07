@@ -1,7 +1,11 @@
+import asyncio
+import concurrent.futures
 import datetime
+from asyncio import Queue
 from typing import List, Optional
 
 from app.config.config import Config
+from app.logic.logic import AppLogic
 from app.remote.config import Config as RemoteCfg
 from app.payloads import Payload, PayloadType, UpdateStatus
 from app.remote.remote import Remote
@@ -17,25 +21,29 @@ class ConnectorApp:
         self.config = config
         self.status = AppStatus.Starting
         self.status_time = datetime.datetime.now()
-        self.remote_config = RemoteCfg(dsn=config.redis_dsn, config_channel=config.redis_config_channel,
-                                       telemetry_channel=config.redis_telemetry_channel,
-                                       config_apply_channel=config.redis_config_apply_channel,
-                                       status_update_channel=config.redis_status_update_channel,
-                                       log_channel=config.redis_log_channel)
+        self.remote_config = RemoteCfg()
+        self.wire_config = WireCfg()
+        self.logic_queue = Queue()
+        self.wire_queue = Queue()
+        self.remote_queue = Queue()
+        self.logic = AppLogic(self.remote_config, self.logic_queue)
+        self.remote = Remote(self.remote_config, self.remote_queue, self.logic_queue)
+        self.wire = WireConnection(self.wire_config, self.remote_config, self.logic_queue)
+        self.modules = []
+        self.init_modules()
 
-        self.wire_config = WireCfg(port=config.serial_port, baudrate=config.serial_baudrate,
-                                   parity=config.serial_parity, bytesize=config.serial_bytesize,
-                                   timeout=config.serial_timeout, stopbits=config.serial_stopbits)
+    def init_modules(self):
+        self.modules.append(self.remote)
+        self.modules.append(self.wire)
+        self.modules.append(self.logic)
 
-        self.remote = Remote(self.remote_config)
-        self.wire = WireConnection(self.wire_config)
-        self.payloads = []
-
-    def run(self):
+    async def run(self):
         self.remote.subscribe()
-        while True:
-            self.step()
-            self.process_payloads()
+        futures = []
+        for f in self.modules:
+            futures.append(asyncio.create_task(f.run()))
+
+        await asyncio.gather(*futures)
 
     def step(self):
         self.add_payloads(*self.remote.step(), *self.wire.step())

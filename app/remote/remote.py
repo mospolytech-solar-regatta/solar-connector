@@ -1,20 +1,27 @@
+import asyncio
 import json
 import queue
-from typing import Optional, List
+from asyncio import Queue, QueueFull, QueueEmpty
+from typing import List
 
 import pydantic
 import redis
 
+from app.base import BaseModule
 from app.remote.config import Config
 from app.payloads import Payload, PayloadType
 from app.wire.config import Config as SerialConfig
 
 
-class Remote:
+class Remote(BaseModule):
+    module_name = "remote"
     allowed_payload_types = [PayloadType.telemetry, PayloadType.log, PayloadType.config_update,
                              PayloadType.status_update]
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, q: Queue, logic_queue: Queue):
+        super().__init__(config)
+        self.inbound = q
+        self.outbound = logic_queue
         self.redis = redis.Redis().from_url(config.dsn)
         self.pubsub = self.redis.pubsub()
         self.config_channel = config.config_channel
@@ -22,7 +29,6 @@ class Remote:
         self.config_apply_channel = config.config_apply_channel
         self.status_update_channel = config.status_update_channel
         self.log_channel = config.log_channel
-        self.__wire_payloads = queue.Queue()
 
     def subscribe(self):
         self.pubsub.subscribe(**{self.config_channel: self.config_handler})
@@ -32,34 +38,29 @@ class Remote:
             data = json.loads(message['data'].decode('UTF-8'))
             data = SerialConfig(**data)
             payload = Payload(type=PayloadType.config, data=data)
-            self.__wire_payloads.put(payload)
-        except json.JSONDecodeError:
-            return None
-        except pydantic.ValidationError:
-            return None
+            self.outbound.put_nowait(payload)
+        except json.JSONDecodeError as err:
+            self.logger.error(err)
+        except pydantic.ValidationError as err:
+            self.logger.error(err)
+        except QueueFull as err:
+            self.logger.error(err)
 
-    def step(self) -> List[Payload]:
+    async def step(self) -> None:
+        self.process_payloads()
         self.pubsub.get_message()
-        return self.get_wire_queue()
 
     def __process_payload(self, payload: Payload):
         if payload is not None:
             self.publish(payload)
 
-    def get_wire_queue(self) -> List[Payload]:
-        res = []
-        while not self.__wire_payloads.empty():
+    def process_payloads(self):
+        while True:
             try:
-                res.append(self.__wire_payloads.get_nowait())
-            except queue.Empty:
+                p = self.inbound.get_nowait()
+            except QueueEmpty:
                 break
-        return res
-
-    def process_payloads(self, *payloads):
-        res = []
-        for i in payloads:
-            res.append(self.__process_payload(i))
-        return res
+            self.__process_payload(p)
 
     def publish(self, payload: Payload):
         if payload.type == PayloadType.telemetry:
@@ -70,4 +71,3 @@ class Remote:
             self.redis.publish(self.status_update_channel, payload.data.json())
         if payload.type == PayloadType.log:
             self.redis.publish(self.log_channel, payload.data.data)
-

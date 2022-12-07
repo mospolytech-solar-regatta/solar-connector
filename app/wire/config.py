@@ -12,4 +12,6 @@ class Config(BaseSettings):
     stopbits: Optional[int] = 1
     timeout: Optional[int] = 0
 
-
+    class Config:
+        env_file = '.env'
+        env_prefix = 'serial_'
