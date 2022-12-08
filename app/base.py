@@ -1,5 +1,7 @@
 import asyncio
 import logging
+from asyncio import Queue, QueueFull
+
 import app.replacement.logs as logs
 from app.remote.config import Config
 
@@ -27,3 +29,9 @@ class BaseModule:
 
     def get_logger(self):
         return logging.getLogger(self.module_name)
+
+    def put_in_queue(self, payload: any, q: Queue):
+        try:
+            q.put_nowait(payload)
+        except QueueFull as err:
+            self.logger.error(err)

@@ -1,22 +1,17 @@
-import asyncio
 import json
-import queue
 from asyncio import Queue, QueueFull, QueueEmpty
-from typing import List
 
 import pydantic
 import redis
 
 from app.base import BaseModule
-from app.remote.config import Config
 from app.payloads import Payload, PayloadType
+from app.remote.config import Config
 from app.wire.config import Config as SerialConfig
 
 
 class Remote(BaseModule):
     module_name = "remote"
-    allowed_payload_types = [PayloadType.telemetry, PayloadType.log, PayloadType.config_update,
-                             PayloadType.status_update]
 
     def __init__(self, config: Config, q: Queue, logic_queue: Queue):
         super().__init__(config)
@@ -50,17 +45,19 @@ class Remote(BaseModule):
         self.process_payloads()
         self.pubsub.get_message()
 
-    def __process_payload(self, payload: Payload):
+    def handle_payload(self, payload: Payload):
         if payload is not None:
             self.publish(payload)
 
     def process_payloads(self):
         while True:
             try:
-                p = self.inbound.get_nowait()
+                payload = self.inbound.get_nowait()
             except QueueEmpty:
-                break
-            self.__process_payload(p)
+                return
+            self.logger.debug(f'received payload: {payload}')
+            payload: Payload
+            self.handle_payload(payload)
 
     def publish(self, payload: Payload):
         if payload.type == PayloadType.telemetry:
@@ -69,5 +66,3 @@ class Remote(BaseModule):
             self.redis.publish(self.config_apply_channel, payload.data.json())
         if payload.type == PayloadType.status_update:
             self.redis.publish(self.status_update_channel, payload.data.json())
-        if payload.type == PayloadType.log:
-            self.redis.publish(self.log_channel, payload.data.data)

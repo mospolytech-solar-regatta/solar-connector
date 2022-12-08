@@ -14,5 +14,6 @@ def setup_logging(name: str, cfg: Config):
     logger.addHandler(ch)
     rh = RedisHandler(cfg)
     rh.setLevel(logging.DEBUG)
+    rh.setFormatter(formatter)
     logger.addHandler(rh)
     return logger
