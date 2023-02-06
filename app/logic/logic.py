@@ -25,6 +25,8 @@ class AppLogic(BaseModule):
             self.handle_payload(payload)
 
     def handle_payload(self, payload: Payload):
+        if payload is None:
+            return
         if payload.type in [PayloadType.telemetry, PayloadType.config_update]:
             self.put_in_queue(payload, self.remote)
         if payload.type == PayloadType.config:

@@ -35,7 +35,8 @@ class WireConnection(BaseModule):
             data = self.conn.read()
             if data:
                 p = self.get_telemetry_payload(data)
-                self.put_in_queue(p, self.outbound)
+                if p is not None:
+                    self.put_in_queue(p, self.outbound)
         except SerialReadError as err:
             self.logger.error(err)
 
