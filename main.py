@@ -1,3 +1,5 @@
+import asyncio
+
 from app.app import ConnectorApp
 from app.config.config import Config
 
@@ -5,7 +7,7 @@ from app.config.config import Config
 def main():
     config = Config()
     app = ConnectorApp(config)
-    app.run()
+    asyncio.run(app.run())
 
 
 if __name__ == '__main__':

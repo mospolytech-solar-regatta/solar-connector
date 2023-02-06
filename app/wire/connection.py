@@ -2,8 +2,9 @@ import json
 from typing import Optional
 
 import serial
-from app.wire.config import Config
+
 from app.errors import SerialReadError
+from app.wire.config import Config
 
 
 class Connection:

@@ -1,37 +1,54 @@
 import datetime
 import json
-import traceback
-from typing import Optional, List
+from asyncio import Queue, QueueEmpty
+from typing import Optional
 
 import pydantic
 
-from app.status import AppStatus
-from app.wire.connection import Connection
-from app.remote.models import Telemetry
-from app.payloads import PayloadType, Payload, ConfigUpdated, UpdateStatus, LogPayload
-from app.wire.config import Config
+from app.base import BaseModule
 from app.errors import SerialReadError
+from app.payloads import PayloadType, Payload, ConfigUpdated
+from app.remote.config import Config as RemoteConfig
+from app.remote.models import Telemetry
+from app.wire.config import Config
+from app.wire.connection import Connection
 
 
-class WireConnection:
-    allowed_payload_types = [PayloadType.config]
+class WireConnection(BaseModule):
+    module_name = "wire"
+    config_propagate_interval = datetime.timedelta(seconds=30)
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, remoteCfg: RemoteConfig, logic_queue: Queue, q: Queue):
+        super().__init__(remoteCfg)
+        self.outbound = logic_queue
+        self.inbound = q
         self.conn = Connection(config)
+        self.last_config_propagate = datetime.datetime.now() - self.config_propagate_interval
 
-    def step(self):
-        return self.read()
+    async def step(self):
+        self.process_payloads()
+        self.process_serial()
+        self.process_config_propagate()
 
-    def read(self) -> List[Payload]:
-        payloads = []
+    def process_serial(self):
         try:
             data = self.conn.read()
             if data:
-                payloads.append(self.get_telemetry_payload(data))
-        except SerialReadError:
-            payloads.append(self.get_new_status_payload(AppStatus.Failing))
-        payloads.append(self.get_config_update_payload())
-        return payloads
+                p = self.get_telemetry_payload(data)
+                self.put_in_queue(p, self.outbound)
+        except SerialReadError as err:
+            self.logger.error(err)
+
+    def process_config_propagate(self):
+        if datetime.datetime.now() - self.last_config_propagate < self.config_propagate_interval:
+            return
+
+        self.last_config_propagate = datetime.datetime.now()
+        self.propagate_config()
+
+    def propagate_config(self):
+        p = self.get_config_update_payload()
+        self.put_in_queue(p, self.outbound)
 
     def get_telemetry_payload(self, data) -> Optional[Payload]:
         try:
@@ -39,34 +56,27 @@ class WireConnection:
             data = Telemetry.parse_obj(data)
             payload = Payload(data=data, type=PayloadType.telemetry)
             return payload
-        except json.JSONDecodeError:
-            return self.get_log_payload(traceback.format_exc())
-        except pydantic.ValidationError:
-            return self.get_log_payload(traceback.format_exc())
+        except json.JSONDecodeError as err:
+            self.logger.error(err)
+        except pydantic.ValidationError as err:
+            self.logger.error(err)
 
-    def get_log_payload(self, log: str):
-        log = str(log)
-        log = LogPayload(timestamp=datetime.datetime.now(), data=log)
-        return Payload(type=PayloadType.log, data=log)
-
-    def get_new_status_payload(self, new_status: AppStatus):
-        status_update = UpdateStatus(timestamp=datetime.datetime.now(), status=new_status)
-        return Payload(type=PayloadType.status_update, data=status_update)
-
-    def get_config_update_payload(self) -> Optional[Payload]:
+    def get_config_update_payload(self) -> Payload:
         config_update = ConfigUpdated(timestamp=datetime.datetime.now(), config=self.conn.config)
         payload = Payload(type=PayloadType.config_update, data=config_update)
         return payload
 
-    def __process_payload(self, msg: Payload):
+    def handle_payload(self, msg: Payload):
         if msg.type == PayloadType.config:
             self.conn.update_config(msg.data)
-            return self.get_config_update_payload()
+            self.propagate_config()
 
-    def process_payloads(self, *payloads) -> List[Payload]:
-        res = []
-        for i in payloads:
-            pay = self.__process_payload(i)
-            if pay is not None:
-                res.append(pay)
-        return res
+    def process_payloads(self) -> None:
+        while True:
+            try:
+                payload = self.inbound.get_nowait()
+            except QueueEmpty:
+                return
+            self.logger.debug(f'received payload: {payload}')
+            payload: Payload
+            self.handle_payload(payload)
