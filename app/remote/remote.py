@@ -8,7 +8,7 @@ from app.base import BaseModule
 from app.payloads import Payload, PayloadType
 from app.remote.config import Config
 from app.wire.config import Config as SerialConfig
-
+from app.remote.models import LandData
 
 class Remote(BaseModule):
     module_name = "remote"
@@ -20,19 +20,34 @@ class Remote(BaseModule):
         self.redis = redis.Redis().from_url(config.dsn)
         self.pubsub = self.redis.pubsub()
         self.config_channel = config.config_channel
+        self.land_queue_channel = config.land_queue_channel
         self.telemetry_channel = config.telemetry_channel
         self.config_apply_channel = config.config_apply_channel
         self.status_update_channel = config.status_update_channel
         self.log_channel = config.log_channel
 
     def subscribe(self):
-        self.pubsub.subscribe(**{self.config_channel: self.config_handler})
+        self.pubsub.subscribe(**{self.config_channel: self.config_handler,
+                                 self.land_queue_channel: self.land_data_handler})
 
     def config_handler(self, message):
         try:
             data = json.loads(message['data'].decode('UTF-8'))
             data = SerialConfig(**data)
             payload = Payload(type=PayloadType.config, data=data)
+            self.outbound.put_nowait(payload)
+        except json.JSONDecodeError as err:
+            self.logger.error(err)
+        except pydantic.ValidationError as err:
+            self.logger.error(err)
+        except QueueFull as err:
+            self.logger.error(err)
+
+    def land_data_handler(self, message):
+        try:
+            data = json.loads(message['data'].decode('UTF-8'))
+            data = LandData(**data)
+            payload = Payload(type=PayloadType.land_data, data=data)
             self.outbound.put_nowait(payload)
         except json.JSONDecodeError as err:
             self.logger.error(err)

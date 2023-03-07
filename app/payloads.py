@@ -13,6 +13,7 @@ class PayloadType(IntEnum):
     config = 2
     config_update = 3
     status_update = 4
+    land_data = 5
 
 
 class ConfigUpdated(BaseModel):

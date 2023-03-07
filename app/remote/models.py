@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from enum import IntEnum
 
 from pydantic import BaseModel, Field
 
@@ -15,3 +15,14 @@ class Telemetry(BaseModel):
     motor_revols: float
     position_lat: float
     position_lng: float
+
+
+class LandData(BaseModel):
+    class Priority(IntEnum):
+        low = 0
+        high = 1
+
+    priority: Priority
+    created_at: datetime
+    id: int
+    data: str

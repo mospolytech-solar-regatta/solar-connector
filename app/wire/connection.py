@@ -3,7 +3,7 @@ from typing import Optional
 
 import serial
 
-from app.errors import SerialReadError
+from app.errors import SerialReadError, SerialWriteError
 from app.wire.config import Config
 
 
@@ -87,6 +87,13 @@ class Connection:
             else:
                 self.append_buffer(data)
         return result
+
+    def send(self, data: str) -> None:
+        data = data.strip()
+        self.validate_and_fix_config()
+        if not self.check_serial():
+            raise SerialWriteError()
+        self.serial.writelines([data.encode('UTF-8')])
 
     def validate_and_fix_config(self):
         if not self.check_serial():

@@ -29,5 +29,5 @@ class AppLogic(BaseModule):
             return
         if payload.type in [PayloadType.telemetry, PayloadType.config_update]:
             self.put_in_queue(payload, self.remote)
-        if payload.type == PayloadType.config:
+        if payload.type in [PayloadType.config, PayloadType.land_data]:
             self.put_in_queue(payload, self.wire)
