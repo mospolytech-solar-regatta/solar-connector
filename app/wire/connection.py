@@ -1,4 +1,6 @@
 import json
+import time
+from logging import Logger
 from typing import Optional
 
 import serial
@@ -10,8 +12,9 @@ from app.wire.config import Config
 class Connection:
     tmp_config_filename = 'tmp/serial_config'
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, logger: Logger):
         self.config = config
+        self.logger = logger
         self.config = self.discovery_config()
         self.serial = self.create_serial()
         self.__buffer = b""
@@ -62,7 +65,6 @@ class Connection:
             pass
 
     def restart_serial(self):
-        print('reopen')
         if self.serial.is_open:
             self.serial.close()
         self.serial = self.create_serial()
@@ -97,6 +99,8 @@ class Connection:
 
     def validate_and_fix_config(self):
         if not self.check_serial():
+            self.logger.warning("Serial not reachable, sleeping for 5 sec")
+            time.sleep(5)
             self.update_config(self.discovery_config())
 
     def check_serial(self, ser=None) -> bool:

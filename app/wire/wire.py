@@ -21,13 +21,13 @@ class WireConnection(BaseModule):
     PAYLOAD_REQUEST = "Waiting for a new Payload"
     PAYLOAD_RECEIVED = "Got a new Payload"
 
-    def __init__(self, config: Config, remoteCfg: RemoteConfig, logic_queue: Queue, q: Queue):
-        super().__init__(remoteCfg)
+    def __init__(self, config: Config, remote_cfg: RemoteConfig, logic_queue: Queue, q: Queue):
+        super().__init__(remote_cfg)
         self.outbound = logic_queue
         self.inbound = q
         self.controller_status = ControllerStatus.waiting_for_payload
         self.land_low_prior_queue = None
-        self.conn = Connection(config)
+        self.conn = Connection(config, self.logger)
         self.last_config_propagate = datetime.datetime.now() - self.config_propagate_interval
 
     async def step(self):
@@ -79,6 +79,8 @@ class WireConnection(BaseModule):
     def get_telemetry_payload(self, data: str) -> Optional[Payload]:
         try:
             data = json.loads(data)
+            # TODO: fix created_at validation
+            data['created_at'] = datetime.datetime.now().isoformat()
             data = Telemetry.parse_obj(data)
             payload = Payload(data=data, type=PayloadType.telemetry)
             return payload
