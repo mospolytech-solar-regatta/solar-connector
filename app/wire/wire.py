@@ -80,6 +80,7 @@ class WireConnection(BaseModule):
         try:
             data = json.loads(data)
             # TODO: fix created_at validation
+            self.logger.debug(f'telemetry payload {data}')
             data['created_at'] = datetime.datetime.now().isoformat()
             data = Telemetry.parse_obj(data)
             payload = Payload(data=data, type=PayloadType.telemetry)

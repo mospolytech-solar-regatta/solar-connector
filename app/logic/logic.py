@@ -20,7 +20,7 @@ class AppLogic(BaseModule):
                 payload = self.queue.get_nowait()
             except QueueEmpty:
                 return
-            self.logger.debug(f'received payload: {payload}')
+            # self.logger.debug(f'received payload: {payload}')
             payload: Payload
             self.handle_payload(payload)
 
