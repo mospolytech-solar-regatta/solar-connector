@@ -5,4 +5,3 @@ class AppStatus(str, Enum):
     Starting = 'starting'
     Failing = 'failing'
     Running = 'running'
-

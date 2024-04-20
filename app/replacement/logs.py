@@ -1,10 +1,10 @@
 import logging
 
-from app.remote.config import Config
+from app.config.config import Config
 from app.replacement.redis_logging_handler import RedisHandler
 
 
-def setup_logging(name: str, cfg: Config):
+def setup_logger(name: str, cfg: Config) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()

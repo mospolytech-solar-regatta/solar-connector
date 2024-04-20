@@ -4,8 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from app.client.serialclient import SerialConfig
 from app.status import AppStatus
-from app.wire.config import Config as SerialConfig
 
 
 class PayloadType(IntEnum):

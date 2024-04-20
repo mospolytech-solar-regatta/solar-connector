@@ -1,15 +1,18 @@
 import asyncio
 import datetime
-from asyncio import Queue
 
+from redis.asyncio import Redis
+
+from app.client import ConnectionProvider, Connection
+from app.client.serialclient import SerialConfig
 from app.config.config import Config
-from app.logic.logic import AppLogic
+from app.controller.configcontroller.configcontroller import ConfigController
+from app.controller.landcontroller.landcontroller import LandController
+from app.controller.telemetrycontroller.telemetrycontroller import TelemetryController
+from app.handler import SerialHandler, RedisHandler
 from app.payloads import PayloadType
-from app.remote.config import Config as RemoteCfg
-from app.remote.remote import Remote
+from app.replacement.logs import setup_logger
 from app.status import AppStatus
-from app.wire.config import Config as WireCfg
-from app.wire.wire import WireConnection
 
 
 class ConnectorApp:
@@ -19,26 +22,56 @@ class ConnectorApp:
         self.config = config
         self.status = AppStatus.Starting
         self.status_time = datetime.datetime.now()
-        self.remote_config = RemoteCfg()
-        self.wire_config = WireCfg()
-        self.logic_queue = Queue()
-        self.wire_queue = Queue()
-        self.remote_queue = Queue()
-        self.logic = AppLogic(self.remote_config, self.logic_queue, self.wire_queue, self.remote_queue)
-        self.remote = Remote(self.remote_config, self.remote_queue, self.logic_queue)
-        self.wire = WireConnection(self.wire_config, self.remote_config, self.logic_queue, self.wire_queue)
-        self.modules = []
-        self.init_modules()
 
-    def init_modules(self):
-        self.modules.append(self.remote)
-        self.modules.append(self.wire)
-        self.modules.append(self.logic)
+        self.connection = Connection(
+            setup_logger("connection", config),
+            SerialConfig(),
+        )
+        self.connection_provider = ConnectionProvider(
+            self.connection
+        )
+        self.redis = Redis().from_url(str(config.redis_dsn))
+
+        self.config_controller = ConfigController(
+            setup_logger("config_controller", config),
+            self.connection_provider,
+            self.redis,
+            self.config,
+        )
+        self.land_controller = LandController(
+            setup_logger("land_controller", config),
+            self.connection_provider,
+        )
+        self.telemetry_controller = TelemetryController(
+            setup_logger("telemetry_controller", config),
+            self.redis,
+            self.config,
+        )
+
+        self.redis_handler = RedisHandler(
+            setup_logger("redis_handler", config),
+            self.config_controller,
+            self.land_controller,
+            self.redis,
+            self.config,
+        )
+        self.serial_handler = SerialHandler(
+            setup_logger("serial_handler", config),
+            self.connection_provider,
+            self.telemetry_controller,
+        )
+
+        self.handlers = [
+            self.serial_handler,
+            self.redis_handler,
+        ]
 
     async def run(self):
-        self.remote.subscribe()
+        for f in self.handlers:
+            await f.init()
+
         futures = []
-        for f in self.modules:
+        for f in self.handlers:
             futures.append(asyncio.create_task(f.run()))
 
         await asyncio.gather(*futures)

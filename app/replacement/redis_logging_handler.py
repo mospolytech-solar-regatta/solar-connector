@@ -1,5 +1,6 @@
 from logging import StreamHandler, LogRecord
-from app.remote.config import Config
+
+from app.config.config import Config
 from app.replacement.sync_redis import SyncRedis
 
 
@@ -8,7 +9,7 @@ class RedisHandler(StreamHandler):
         super().__init__()
         r = SyncRedis(cfg)
         self.redis = r.get_redis()
-        self.channel = cfg.log_channel
+        self.channel = cfg.redis_log_channel
 
     def emit(self, record: LogRecord) -> None:
         msg = self.format(record)

@@ -1,11 +1,11 @@
 import redis
 
-from app.remote.config import Config
+from app.config.config import Config
 
 
 class SyncRedis:
     def __init__(self, cfg: Config):
-        self.pool = redis.ConnectionPool.from_url(cfg.dsn)
+        self.pool = redis.ConnectionPool.from_url(str(cfg.redis_dsn))
 
     def get_pool(self):
         return self.pool
