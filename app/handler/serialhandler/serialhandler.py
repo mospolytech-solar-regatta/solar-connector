@@ -56,7 +56,7 @@ class SerialHandler(BaseHandler):
 
     async def init(self):
         async with self.conn_provider as conn:
-            res = await conn.check_serial()
+            res = conn.check_serial()
             if not res:
                 self.logger.warning("Serial not available")
 

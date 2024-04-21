@@ -10,16 +10,15 @@ def main():
     config = Config()
     logger = setup_logger("main", config)
     app = ConnectorApp(config)
-    while True:
-        try:
-            asyncio.run(app.run())
-        except KeyboardInterrupt:
-            break
-        except asyncio.CancelledError:
-            break
-        except Exception as e:
-            traceback.print_exc()
-            logger.info(str(e))
+    try:
+        asyncio.run(app.run())
+    except KeyboardInterrupt:
+        pass
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        traceback.print_exc()
+        logger.info(str(e))
     logger.info("Shutting down")
 
 

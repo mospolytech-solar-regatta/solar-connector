@@ -24,18 +24,19 @@ class Connection:
         if cfg is None:
             cfg = self.config
         try:
-            return aioserial.AioSerial(port=cfg.port, budrate=cfg.baudrate, timeout=cfg.timeout,
+            return aioserial.AioSerial(port=cfg.port, baudrate=cfg.baudrate, timeout=cfg.timeout,
                                        parity=cfg.parity, rtscts=True, stopbits=cfg.stopbits,
                                        bytesize=cfg.bytesize)
-        except:
-            return None
+        except Exception as ex:
+            self.logger.warning(str(ex))
+            return aioserial.AioSerial()
 
     def discovery_config(self):
         # if file config correct use file config
         cfg = self.get_tmp_config()
         if cfg is not None:
             ser = self.create_serial(cfg)
-            if ser is not None and ser.is_open:
+            if ser.is_open:
                 ser.close()
                 return cfg
 
@@ -70,8 +71,6 @@ class Connection:
         if self.serial.is_open:
             self.serial.close()
         self.serial = self.create_serial()
-        if self.serial is None:
-            return
 
         try:
             if not self.serial.is_open:
@@ -81,51 +80,49 @@ class Connection:
 
     async def read(self) -> Optional[str]:
         await self.validate_and_fix_config()
-        if not await self.__check_serial():
+        if not self.__check_serial():
             raise SerialReadError()
 
         data: bytes = await self.serial.readline_async()
         if data:
             is_newline = data.find(b'\n')
             if is_newline != -1:
-                await self.append_buffer(data[:is_newline])
-                return str(self.pop_buffer())
+                self.append_buffer(data[:is_newline])
+                return self.pop_buffer().decode('UTF-8')
 
-            await self.append_buffer(data)
+            self.append_buffer(data)
 
     async def send(self, data: str) -> None:
         data = data.strip()
         await self.validate_and_fix_config()
-        if not await self.__check_serial():
+        if not self.__check_serial():
             raise SerialWriteError()
         await self.serial.writelines_async([data.encode('UTF-8')])
 
     async def validate_and_fix_config(self):
-        if not await self.__check_serial():
+        if not self.__check_serial():
             self.logger.warning("Serial not reachable, sleeping for 5 sec")
             await asyncio.sleep(5)
-            await self.update_config(self.discovery_config())
+            self.update_config(self.discovery_config())
 
-    async def check_serial(self) -> bool:
-        return await self.__check_serial(self.serial)
+    def check_serial(self) -> bool:
+        return self.__check_serial(self.serial)
 
-    async def __check_serial(self, ser=None) -> bool:
+    def __check_serial(self, ser=None) -> bool:
         if ser is None:
             ser = self.serial
 
-        if ser is None:
-            return False
         return ser.is_open
 
-    async def update_config(self, new_cfg: SerialConfig):
+    def update_config(self, new_cfg: SerialConfig):
         self.config = new_cfg
         self.save_tmp_config()
         self.restart_serial()
 
-    async def pop_buffer(self):
+    def pop_buffer(self):
         result = self.__buffer[:]
         self.__buffer = b""
         return result
 
-    async def append_buffer(self, data: bytes):
+    def append_buffer(self, data: bytes):
         self.__buffer += data

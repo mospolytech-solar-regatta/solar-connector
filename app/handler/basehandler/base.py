@@ -16,5 +16,11 @@ class BaseHandler:
         pass
 
     async def run(self) -> None:
-        await self.step()
-        await asyncio.sleep(0.001)
+        while True:
+            try:
+                await self.step()
+                await asyncio.sleep(0.001)
+            except KeyboardInterrupt:
+                return
+            except Exception as ex:
+                self.logger.error(str(ex))

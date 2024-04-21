@@ -32,10 +32,13 @@ class RedisHandler(BaseHandler):
         self.status_update_channel = config.redis_status_update_channel
 
     async def subscribe(self):
-        await self.pubsub.subscribe(**{
-            self.config_channel: self.config_handler,
-            self.land_queue_channel: self.land_data_handler,
-        })
+        try:
+            await self.pubsub.subscribe(**{
+                self.config_channel: self.config_handler,
+                self.land_queue_channel: self.land_data_handler,
+            })
+        except Exception as ex:
+            self.logger.error(str(ex))
 
     async def config_handler(self, message: dict):
         try:

@@ -20,7 +20,7 @@ class ConfigController:
                  ):
         self.logger = logger
         self.redis = redis
-        self.config_channel = config.redis_config_channel
+        self.config_apply_channel = config.redis_config_apply_channel
         self.pubsub = redis.pubsub()
         self.conn_provider = connection_provider
         self.last_config_propagate = datetime.now() - self.config_propagate_interval
@@ -34,7 +34,7 @@ class ConfigController:
 
     async def propagate_config(self):
         cfg = await self.get_config_update_payload()
-        await self.redis.publish(self.config_channel, cfg)
+        await self.redis.publish(self.config_apply_channel, cfg.json())
 
     async def update_config(self, config: SerialConfig):
         async with self.conn_provider as conn:

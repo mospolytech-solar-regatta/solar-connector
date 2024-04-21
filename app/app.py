@@ -74,4 +74,4 @@ class ConnectorApp:
         for f in self.handlers:
             futures.append(asyncio.create_task(f.run()))
 
-        await asyncio.gather(*futures)
+        await asyncio.gather(*futures, return_exceptions=True)
