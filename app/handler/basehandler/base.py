@@ -19,7 +19,7 @@ class BaseHandler:
         while True:
             try:
                 await self.step()
-                await asyncio.sleep(0.001)
+                await asyncio.sleep(0.1)
             except KeyboardInterrupt:
                 return
             except Exception as ex:

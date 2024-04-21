@@ -45,9 +45,9 @@ class SerialHandler(BaseHandler):
         try:
             data = json.loads(data)
             # TODO: fix created_at validation
-            self.logger.debug(f'telemetry payload {data}')
             data['created_at'] = datetime.datetime.now().isoformat()
             data = Telemetry.parse_obj(data)
+            self.logger.debug(f'telemetry payload {data}')
             return data
         except json.JSONDecodeError as err:
             self.logger.error(err)
